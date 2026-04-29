@@ -1,8 +1,7 @@
 "use client";
-
 import Image from "next/image";
 import Link from "next/link";
-import { ShoppingCart, Zap, CheckCircle } from "lucide-react";
+import { ShoppingCart, Zap, CheckCircle, ArrowRight } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import toast from "react-hot-toast";
 
@@ -77,17 +76,24 @@ export default function ProductCard({ product }: { product: Product }) {
           <p className="text-gray-500 text-xs mt-1 line-clamp-2">{product.description}</p>
         </div>
 
-        {/* Price */}
-        <div className="flex items-baseline gap-2">
-          <span className="font-heading font-bold text-xl text-brand-red">
-            ₹{product.discountedPrice.toLocaleString("en-IN")}
-          </span>
-          {product.discount > 0 && (
-            <span className="text-gray-400 text-sm line-through">
-              ₹{product.price.toLocaleString("en-IN")}
+        {/* Price — hide for custom products since price is quoted */}
+        {!product.isCustom && (
+          <div className="flex items-baseline gap-2">
+            <span className="font-heading font-bold text-xl text-brand-red">
+              ₹{product.discountedPrice.toLocaleString("en-IN")}
             </span>
-          )}
-        </div>
+            {product.discount > 0 && (
+              <span className="text-gray-400 text-sm line-through">
+                ₹{product.price.toLocaleString("en-IN")}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Custom price note */}
+        {product.isCustom && (
+          <p className="text-xs text-orange-500 font-medium">Price quoted after review</p>
+        )}
 
         {/* Why Love It */}
         {product.whyLoveIt && product.whyLoveIt.length > 0 && (
@@ -102,18 +108,30 @@ export default function ProductCard({ product }: { product: Product }) {
         )}
 
         {/* CTA */}
-        <button
-          onClick={handleAddToCart}
-          disabled={!product.inStock}
-          className={`mt-auto flex items-center justify-center gap-2 py-2.5 text-sm font-semibold transition-all duration-200 ${
-            product.inStock
-              ? "bg-brand-black text-white hover:bg-brand-red"
-              : "bg-gray-100 text-gray-400 cursor-not-allowed"
-          }`}
-        >
-          <ShoppingCart size={15} />
-          {product.isCustom ? "Customize & Order" : "Add to Cart"}
-        </button>
+        {product.isCustom ? (
+          // Custom products → navigate to product detail page
+          <Link
+            href={`/products/${product._id}`}
+            className="mt-auto flex items-center justify-center gap-2 py-2.5 text-sm font-semibold bg-brand-black text-white hover:bg-brand-red transition-all duration-200"
+          >
+            <ArrowRight size={15} />
+            Customize &amp; Order
+          </Link>
+        ) : (
+          // Regular products → add to cart directly
+          <button
+            onClick={handleAddToCart}
+            disabled={!product.inStock}
+            className={`mt-auto flex items-center justify-center gap-2 py-2.5 text-sm font-semibold transition-all duration-200 ${
+              product.inStock
+                ? "bg-brand-black text-white hover:bg-brand-red"
+                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+            }`}
+          >
+            <ShoppingCart size={15} />
+            Add to Cart
+          </button>
+        )}
       </div>
     </div>
   );
