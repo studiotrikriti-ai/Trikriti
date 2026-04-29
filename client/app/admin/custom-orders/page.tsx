@@ -27,7 +27,33 @@ const STATUS_COLORS: Record<string, string> = {
   Cancelled: "bg-red-100 text-red-700",
 };
 
-type CustomOrder = Record<string, unknown>;
+interface CustomOrder {
+  customOrderId: string;
+  status: string;
+  customer: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  address?: {
+    line1?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+  };
+  productName: string;
+  customDescription: string;
+  referenceImageUrl?: string;
+  deliveryMethod: string;
+  quotedPrice?: number;
+  shippingCost?: number;
+  totalAmount?: number;
+  upiTransactionId?: string;
+  upiVerified: boolean;
+  paymentStatus: string;
+  adminNotes?: string;
+  createdAt: string;
+}
 
 export default function AdminCustomOrdersPage() {
   const [orders, setOrders] = useState<CustomOrder[]>([]);
@@ -36,7 +62,6 @@ export default function AdminCustomOrdersPage() {
   const [selected, setSelected] = useState<CustomOrder | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Edit fields for selected order
   const [quotedPrice, setQuotedPrice] = useState("");
   const [shippingCost, setShippingCost] = useState("94");
   const [newStatus, setNewStatus] = useState("");
@@ -58,10 +83,13 @@ export default function AdminCustomOrdersPage() {
   const openOrder = (order: CustomOrder) => {
     setSelected(order);
     setQuotedPrice(order.quotedPrice ? String(order.quotedPrice) : "");
-    setShippingCost(order.shippingCost !== null && order.shippingCost !== undefined
-      ? String(order.shippingCost) : "94");
-    setNewStatus(order.status as string);
-    setAdminNotes(order.adminNotes as string || "");
+    setShippingCost(
+      order.shippingCost !== null && order.shippingCost !== undefined
+        ? String(order.shippingCost)
+        : "94"
+    );
+    setNewStatus(order.status);
+    setAdminNotes(order.adminNotes || "");
   };
 
   const handleSave = async () => {
@@ -75,15 +103,10 @@ export default function AdminCustomOrdersPage() {
       if (quotedPrice) payload.quotedPrice = Number(quotedPrice);
       if (shippingCost !== "") payload.shippingCost = Number(shippingCost);
 
-      const res = await adminAPI.updateCustomOrder(
-        selected.customOrderId as string,
-        payload
-      );
-      const updated = res.data.order;
+      const res = await adminAPI.updateCustomOrder(selected.customOrderId, payload);
+      const updated: CustomOrder = res.data.order;
       setOrders((prev) =>
-        prev.map((o) =>
-          o.customOrderId === updated.customOrderId ? updated : o
-        )
+        prev.map((o) => (o.customOrderId === updated.customOrderId ? updated : o))
       );
       setSelected(updated);
       toast.success("Custom order updated!");
@@ -98,15 +121,13 @@ export default function AdminCustomOrdersPage() {
     if (!selected) return;
     setSaving(true);
     try {
-      const res = await adminAPI.updateCustomOrder(
-        selected.customOrderId as string,
-        { upiVerified: true, status: "Confirmed" }
-      );
-      const updated = res.data.order;
+      const res = await adminAPI.updateCustomOrder(selected.customOrderId, {
+        upiVerified: true,
+        status: "Confirmed",
+      });
+      const updated: CustomOrder = res.data.order;
       setOrders((prev) =>
-        prev.map((o) =>
-          o.customOrderId === updated.customOrderId ? updated : o
-        )
+        prev.map((o) => (o.customOrderId === updated.customOrderId ? updated : o))
       );
       setSelected(updated);
       setNewStatus("Confirmed");
@@ -118,8 +139,7 @@ export default function AdminCustomOrdersPage() {
     }
   };
 
-  const totalAmount =
-    (Number(quotedPrice) || 0) + (Number(shippingCost) || 0);
+  const totalAmount = (Number(quotedPrice) || 0) + (Number(shippingCost) || 0);
 
   return (
     <div className="pb-20 lg:pb-0">
@@ -134,7 +154,10 @@ export default function AdminCustomOrdersPage() {
           {["all", ...CUSTOM_STATUSES].map((s) => (
             <button
               key={s}
-              onClick={() => { setFilter(s); fetchOrders(s === "all" ? undefined : s); }}
+              onClick={() => {
+                setFilter(s);
+                fetchOrders(s === "all" ? undefined : s);
+              }}
               className={`px-3 py-1.5 text-xs font-medium capitalize transition-colors whitespace-nowrap ${
                 filter === s
                   ? "bg-brand-red text-white"
@@ -149,7 +172,9 @@ export default function AdminCustomOrdersPage() {
 
       {loading ? (
         <div className="space-y-3">
-          {[...Array(4)].map((_, i) => <div key={i} className="h-20 skeleton rounded" />)}
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-20 skeleton rounded" />
+          ))}
         </div>
       ) : orders.length === 0 ? (
         <div className="bg-white border border-gray-100 p-16 text-center">
@@ -158,12 +183,10 @@ export default function AdminCustomOrdersPage() {
       ) : (
         <div className="space-y-3">
           {orders.map((order) => {
-            const c = order.customer as Record<string, unknown>;
-            const upiUnverified = Boolean(order.upiTransactionId) && !Boolean(order.upiVerified);
-
+            const upiUnverified = Boolean(order.upiTransactionId) && !order.upiVerified;
             return (
               <div
-                key={order.customOrderId as string}
+                key={order.customOrderId}
                 onClick={() => openOrder(order)}
                 className={`bg-white border cursor-pointer hover:border-brand-red hover:shadow-sm transition-all p-4 flex flex-col sm:flex-row sm:items-center gap-3 ${
                   upiUnverified ? "border-red-300 bg-red-50/20" : "border-gray-100"
@@ -172,12 +195,12 @@ export default function AdminCustomOrdersPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
                     <span className="font-mono text-xs font-bold text-brand-black">
-                      {order.customOrderId as string}
+                      {order.customOrderId}
                     </span>
                     <span className={`text-xs font-semibold px-2 py-0.5 ${
-                      STATUS_COLORS[order.status as string] || "bg-gray-100 text-gray-600"
+                      STATUS_COLORS[order.status] || "bg-gray-100 text-gray-600"
                     }`}>
-                      {order.status as string}
+                      {order.status}
                     </span>
                     {upiUnverified && (
                       <span className="text-xs bg-red-100 text-red-600 font-semibold px-2 py-0.5 flex items-center gap-1">
@@ -185,20 +208,22 @@ export default function AdminCustomOrdersPage() {
                       </span>
                     )}
                   </div>
-                  <p className="font-medium text-sm">{c?.name as string}</p>
-                  <p className="text-xs text-gray-400">{c?.email as string} · {c?.phone as string}</p>
+                  <p className="font-medium text-sm">{order.customer.name}</p>
+                  <p className="text-xs text-gray-400">
+                    {order.customer.email} · {order.customer.phone}
+                  </p>
                   <p className="text-xs text-gray-500 mt-1 line-clamp-1">
-                    <span className="font-medium">Product:</span> {order.productName as string}
+                    <span className="font-medium">Product:</span> {order.productName}
                   </p>
                   <p className="text-xs text-gray-500 line-clamp-2">
-                    <span className="font-medium">Request:</span> {order.customDescription as string}
+                    <span className="font-medium">Request:</span> {order.customDescription}
                   </p>
                 </div>
 
                 <div className="text-right shrink-0">
                   {order.quotedPrice ? (
                     <div className="font-heading font-bold text-lg text-brand-red">
-                      ₹{(order.totalAmount as number)?.toLocaleString("en-IN")}
+                      ₹{order.totalAmount?.toLocaleString("en-IN")}
                     </div>
                   ) : (
                     <div className="text-xs text-orange-600 font-semibold bg-orange-50 px-2 py-1">
@@ -209,7 +234,7 @@ export default function AdminCustomOrdersPage() {
                     {order.deliveryMethod === "PICKUP" ? "Pickup" : "Home Delivery"}
                   </p>
                   <p className="text-xs text-gray-300 mt-1">
-                    {new Date(order.createdAt as string).toLocaleDateString("en-IN")}
+                    {new Date(order.createdAt).toLocaleDateString("en-IN")}
                   </p>
                 </div>
               </div>
@@ -227,11 +252,12 @@ export default function AdminCustomOrdersPage() {
             <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between z-10">
               <div>
                 <p className="text-xs text-gray-400 uppercase tracking-wide">Custom Order</p>
-                <p className="font-mono font-bold text-base">
-                  {selected.customOrderId as string}
-                </p>
+                <p className="font-mono font-bold text-base">{selected.customOrderId}</p>
               </div>
-              <button onClick={() => setSelected(null)} className="p-1.5 hover:bg-gray-100 rounded-sm">
+              <button
+                onClick={() => setSelected(null)}
+                className="p-1.5 hover:bg-gray-100 rounded-sm"
+              >
                 <X size={18} />
               </button>
             </div>
@@ -239,29 +265,26 @@ export default function AdminCustomOrdersPage() {
             <div className="flex-1 p-5 space-y-5 overflow-y-auto">
               {/* Customer */}
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Customer</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                  Customer
+                </p>
                 <div className="bg-gray-50 p-3 text-sm space-y-1">
-                  {(() => {
-                    const c = selected.customer as Record<string, unknown>;
-                    const a = selected.address as Record<string, unknown>;
-                    return (
-                      <>
-                        <p><span className="font-medium">Name:</span> {c?.name as string}</p>
-                        <p><span className="font-medium">Email:</span>{" "}
-                          <a href={`mailto:${c?.email}`} className="text-brand-red underline">
-                            {c?.email as string}
-                          </a>
-                        </p>
-                        <p><span className="font-medium">Phone:</span> {c?.phone as string}</p>
-                        <p><span className="font-medium">Delivery:</span> {selected.deliveryMethod as string}</p>
-                        {selected.deliveryMethod === "HOME_DELIVERY" && a?.line1 && (
-                          <p><span className="font-medium">Address:</span>{" "}
-                            {a.line1 as string}, {a.city as string}, {a.state as string} – {a.pincode as string}
-                          </p>
-                        )}
-                      </>
-                    );
-                  })()}
+                  <p><span className="font-medium">Name:</span> {selected.customer.name}</p>
+                  <p>
+                    <span className="font-medium">Email:</span>{" "}
+                    <a href={`mailto:${selected.customer.email}`} className="text-brand-red underline">
+                      {selected.customer.email}
+                    </a>
+                  </p>
+                  <p><span className="font-medium">Phone:</span> {selected.customer.phone}</p>
+                  <p><span className="font-medium">Delivery:</span> {selected.deliveryMethod}</p>
+                  {selected.deliveryMethod === "HOME_DELIVERY" && selected.address?.line1 && (
+                    <p>
+                      <span className="font-medium">Address:</span>{" "}
+                      {selected.address.line1}, {selected.address.city},{" "}
+                      {selected.address.state} – {selected.address.pincode}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -271,16 +294,16 @@ export default function AdminCustomOrdersPage() {
                   Custom Request
                 </p>
                 <div className="bg-gray-50 p-3 text-sm space-y-2">
-                  <p><span className="font-medium">Product:</span> {selected.productName as string}</p>
+                  <p><span className="font-medium">Product:</span> {selected.productName}</p>
                   <p><span className="font-medium">Description:</span></p>
                   <p className="text-gray-600 whitespace-pre-wrap leading-relaxed">
-                    {selected.customDescription as string}
+                    {selected.customDescription}
                   </p>
                   {selected.referenceImageUrl && (
                     <div>
                       <p className="font-medium mb-1">Reference Image:</p>
                       <a
-                        href={selected.referenceImageUrl as string}
+                        href={selected.referenceImageUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-brand-red text-xs underline"
@@ -318,11 +341,11 @@ export default function AdminCustomOrdersPage() {
                     <p className="text-xs text-gray-500 mb-1">UTR Number:</p>
                     <div className="flex items-center gap-2">
                       <span className="font-mono font-bold text-lg bg-white px-3 py-2 border border-gray-200 flex-1 text-center select-all">
-                        {selected.upiTransactionId as string}
+                        {selected.upiTransactionId}
                       </span>
                       <button
                         onClick={() => {
-                          navigator.clipboard.writeText(selected.upiTransactionId as string);
+                          navigator.clipboard.writeText(selected.upiTransactionId!);
                           toast.success("Copied!");
                         }}
                         className="text-xs text-brand-red underline"
@@ -344,7 +367,7 @@ export default function AdminCustomOrdersPage() {
                 </div>
               )}
 
-              {/* ── SET PRICE (Admin Only) ── */}
+              {/* Set Price */}
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
                   Set Price (Admin)
