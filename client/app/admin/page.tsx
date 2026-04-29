@@ -187,11 +187,7 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      <div className="mt-6 bg-white border border-gray-100 p-5">
-        <p className="text-sm text-gray-600">
-          <strong>Admin Note:</strong> Products can only have price, discount, and stock updated — they cannot be added or deleted here. Use <code className="bg-gray-100 px-1 text-xs">npm run seed</code> to re-seed products.
-        </p>
-      </div>
+      
     </div>
   );
 }
