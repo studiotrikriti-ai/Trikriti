@@ -6,8 +6,6 @@ import { adminAPI } from "@/lib/api";
 import toast from "react-hot-toast";
 import {
   CheckCircle,
-  ChevronDown,
-  ChevronUp,
   AlertCircle,
   Eye,
   X,
@@ -15,9 +13,8 @@ import {
 
 const ALL_STATUSES = [
   "Pending", "Confirmed", "Shipped", "Delivered",
-  "Ready for Pickup", "Picked Up",  
+  "Ready for Pickup", "Picked Up",
 ] as const;
-type OrderStatus = typeof ALL_STATUSES[number];
 
 const STATUS_COLORS: Record<string, string> = {
   Pending: "bg-yellow-100 text-yellow-700",
@@ -28,7 +25,44 @@ const STATUS_COLORS: Record<string, string> = {
   "Picked Up": "bg-gray-100 text-gray-600",
 };
 
-type Order = Record<string, unknown>;
+interface OrderItem {
+  name: string;
+  image?: string;
+  price: number;
+  discountedPrice: number;
+  quantity: number;
+  isCustom?: boolean;
+  customNote?: string;
+}
+
+interface OrderCustomer {
+  name: string;
+  email: string;
+  phone: string;
+  address?: {
+    line1?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+  };
+}
+
+interface Order {
+  orderId: string;
+  customer: OrderCustomer;
+  items: OrderItem[];
+  subtotal: number;
+  shippingCost: number;
+  totalAmount: number;
+  deliveryMethod: string;
+  paymentMethod: string;
+  paymentStatus: string;
+  upiTransactionId?: string;
+  upiVerified: boolean;
+  status: string;
+  notes?: string;
+  createdAt: string;
+}
 
 export default function AdminOrdersPage() {
   const searchParams = useSearchParams();
@@ -36,11 +70,12 @@ export default function AdminOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState(searchParams.get("status") || "all");
   const [updating, setUpdating] = useState<string | null>(null);
-  const [selected, setSelected] = useState<Order | null>(null); // detail modal
+  const [selected, setSelected] = useState<Order | null>(null);
 
   const fetchOrders = (status?: string) => {
     setLoading(true);
-    const params = status && status !== "all" ? { status } : {};
+    const params: Record<string, string> = {};
+    if (status && status !== "all") params.status = status;
     adminAPI
       .getOrders(params)
       .then((res) => setOrders(res.data.orders))
@@ -58,9 +93,9 @@ export default function AdminOrdersPage() {
     setUpdating(orderId);
     try {
       const res = await adminAPI.updateOrder(orderId, { status });
-      const updated = res.data.order;
+      const updated: Order = res.data.order;
       setOrders((prev) => prev.map((o) => (o.orderId === orderId ? updated : o)));
-      if (selected && (selected.orderId as string) === orderId) setSelected(updated);
+      if (selected?.orderId === orderId) setSelected(updated);
       toast.success(`Status → ${status}`);
     } catch {
       toast.error("Failed to update status");
@@ -73,9 +108,9 @@ export default function AdminOrdersPage() {
     setUpdating(orderId);
     try {
       const res = await adminAPI.verifyUpi(orderId);
-      const updated = res.data.order;
+      const updated: Order = res.data.order;
       setOrders((prev) => prev.map((o) => (o.orderId === orderId ? updated : o)));
-      if (selected && (selected.orderId as string) === orderId) setSelected(updated);
+      if (selected?.orderId === orderId) setSelected(updated);
       toast.success("✅ UPI verified — order confirmed!");
     } catch {
       toast.error("Failed to verify UPI");
@@ -96,8 +131,6 @@ export default function AdminOrdersPage() {
           <h1 className="font-heading font-bold text-2xl">Orders</h1>
           <p className="text-gray-400 text-sm">{orders.length} orders</p>
         </div>
-
-        {/* Filter pills */}
         <div className="flex gap-2 flex-wrap">
           {["all", ...ALL_STATUSES].map((s) => (
             <button
@@ -156,32 +189,20 @@ export default function AdminOrdersPage() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {orders.map((order) => {
-                  const customer = order.customer as Record<string, unknown>;
-                  const isUpiUnverified =
-                    order.paymentMethod === "UPI" && !order.upiVerified;
-
+                  const isUpiUnverified = order.paymentMethod === "UPI" && !order.upiVerified;
                   return (
                     <tr
-                      key={order.orderId as string}
-                      className={`hover:bg-gray-50 transition-colors ${
-                        isUpiUnverified ? "bg-red-50/30" : ""
-                      }`}
+                      key={order.orderId}
+                      className={`hover:bg-gray-50 transition-colors ${isUpiUnverified ? "bg-red-50/30" : ""}`}
                     >
-                      {/* Order ID */}
                       <td className="px-4 py-3 font-mono text-xs font-bold text-brand-black">
-                        {order.orderId as string}
+                        {order.orderId}
                       </td>
-
-                      {/* Customer */}
                       <td className="px-4 py-3">
-                        <div className="font-medium text-xs">{customer?.name as string}</div>
-                        <div className="text-xs text-gray-400">{customer?.phone as string}</div>
-                        <div className="text-xs text-gray-400 truncate max-w-[120px]">
-                          {customer?.email as string}
-                        </div>
+                        <div className="font-medium text-xs">{order.customer.name}</div>
+                        <div className="text-xs text-gray-400">{order.customer.phone}</div>
+                        <div className="text-xs text-gray-400 truncate max-w-[120px]">{order.customer.email}</div>
                       </td>
-
-                      {/* Delivery */}
                       <td className="px-4 py-3">
                         <span className={`text-xs font-medium px-2 py-1 ${
                           order.deliveryMethod === "PICKUP"
@@ -191,20 +212,16 @@ export default function AdminOrdersPage() {
                           {order.deliveryMethod === "PICKUP" ? "Pickup" : "Home"}
                         </span>
                       </td>
-
-                      {/* Amount */}
                       <td className="px-4 py-3">
                         <div className="font-heading font-bold text-brand-red text-sm">
-                          ₹{(order.totalAmount as number).toLocaleString("en-IN")}
+                          ₹{order.totalAmount.toLocaleString("en-IN")}
                         </div>
-                        {(order.shippingCost as number) > 0 && (
+                        {order.shippingCost > 0 && (
                           <div className="text-xs text-gray-400">
-                            incl. ₹{order.shippingCost as number} shipping
+                            incl. ₹{order.shippingCost} shipping
                           </div>
                         )}
                       </td>
-
-                      {/* UPI / Payment */}
                       <td className="px-4 py-3">
                         {order.paymentMethod === "UPI" ? (
                           <div>
@@ -221,7 +238,7 @@ export default function AdminOrdersPage() {
                             </div>
                             {order.upiTransactionId ? (
                               <div className="font-mono text-xs bg-gray-100 px-2 py-1 rounded select-all">
-                                {order.upiTransactionId as string}
+                                {order.upiTransactionId}
                               </div>
                             ) : (
                               <div className="text-xs text-gray-400 italic">No UTR yet</div>
@@ -233,23 +250,18 @@ export default function AdminOrdersPage() {
                           </span>
                         )}
                       </td>
-
-                      {/* Status */}
                       <td className="px-4 py-3">
                         <span className={`text-xs font-semibold px-2 py-1 whitespace-nowrap ${
-                          STATUS_COLORS[order.status as string] || "bg-gray-100 text-gray-600"
+                          STATUS_COLORS[order.status] || "bg-gray-100 text-gray-600"
                         }`}>
-                          {order.status as string}
+                          {order.status}
                         </span>
                       </td>
-
-                      {/* Actions */}
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-1.5">
-                          {/* Verify UPI button */}
                           {isUpiUnverified && order.upiTransactionId && (
                             <button
-                              onClick={() => handleVerifyUpi(order.orderId as string)}
+                              onClick={() => handleVerifyUpi(order.orderId)}
                               disabled={updating === order.orderId}
                               className="flex items-center gap-1 bg-green-600 text-white text-xs px-2 py-1.5 hover:bg-green-700 transition-colors disabled:opacity-50 whitespace-nowrap"
                             >
@@ -257,22 +269,16 @@ export default function AdminOrdersPage() {
                               Verify UPI
                             </button>
                           )}
-
-                          {/* Status dropdown */}
                           <select
-                            value={order.status as string}
+                            value={order.status}
                             disabled={updating === order.orderId}
-                            onChange={(e) =>
-                              handleStatusChange(order.orderId as string, e.target.value)
-                            }
+                            onChange={(e) => handleStatusChange(order.orderId, e.target.value)}
                             className="text-xs border border-gray-200 px-2 py-1.5 focus:outline-none focus:border-brand-red bg-white disabled:opacity-50 cursor-pointer"
                           >
                             {ALL_STATUSES.map((s) => (
                               <option key={s} value={s}>{s}</option>
                             ))}
                           </select>
-
-                          {/* View details */}
                           <button
                             onClick={() => setSelected(order)}
                             className="flex items-center gap-1 text-xs text-brand-red hover:underline"
@@ -294,13 +300,10 @@ export default function AdminOrdersPage() {
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
-            {/* Modal header */}
             <div className="flex items-center justify-between p-5 border-b border-gray-100 sticky top-0 bg-white z-10">
               <div>
                 <p className="text-xs text-gray-400 uppercase tracking-wide">Order</p>
-                <p className="font-mono font-bold text-lg text-brand-black">
-                  {selected.orderId as string}
-                </p>
+                <p className="font-mono font-bold text-lg text-brand-black">{selected.orderId}</p>
               </div>
               <button
                 onClick={() => setSelected(null)}
@@ -314,56 +317,42 @@ export default function AdminOrdersPage() {
               {/* Status + Payment */}
               <div className="flex items-center gap-3 flex-wrap">
                 <span className={`text-xs font-bold px-3 py-1.5 ${
-                  STATUS_COLORS[selected.status as string] || "bg-gray-100 text-gray-600"
+                  STATUS_COLORS[selected.status] || "bg-gray-100 text-gray-600"
                 }`}>
-                  {selected.status as string}
+                  {selected.status}
                 </span>
                 <span className={`text-xs font-medium px-3 py-1.5 ${
                   selected.paymentStatus === "Paid"
                     ? "bg-green-100 text-green-700"
                     : "bg-yellow-100 text-yellow-700"
                 }`}>
-                  Payment: {selected.paymentStatus as string}
+                  Payment: {selected.paymentStatus}
                 </span>
               </div>
 
               {/* Customer */}
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                  Customer
-                </p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Customer</p>
                 <div className="bg-gray-50 p-3 space-y-1 text-sm">
-                  {(() => {
-                    const c = selected.customer as Record<string, unknown>;
-                    const a = c?.address as Record<string, unknown>;
-                    return (
-                      <>
-                        <p><span className="font-medium">Name:</span> {c?.name as string}</p>
-                        <p><span className="font-medium">Email:</span> {c?.email as string}</p>
-                        <p><span className="font-medium">Phone:</span> {c?.phone as string}</p>
-                        {selected.deliveryMethod === "HOME_DELIVERY" && a?.line1 && (
-                          <p>
-                            <span className="font-medium">Address:</span>{" "}
-                            {a.line1 as string}, {a.city as string}, {a.state as string} –{" "}
-                            {a.pincode as string}
-                          </p>
-                        )}
-                      </>
-                    );
-                  })()}
+                  <p><span className="font-medium">Name:</span> {selected.customer.name}</p>
+                  <p><span className="font-medium">Email:</span> {selected.customer.email}</p>
+                  <p><span className="font-medium">Phone:</span> {selected.customer.phone}</p>
+                  {selected.deliveryMethod === "HOME_DELIVERY" && selected.customer.address?.line1 && (
+                    <p>
+                      <span className="font-medium">Address:</span>{" "}
+                      {selected.customer.address.line1}, {selected.customer.address.city},{" "}
+                      {selected.customer.address.state} – {selected.customer.address.pincode}
+                    </p>
+                  )}
                 </div>
               </div>
 
               {/* UPI Details */}
               {selected.paymentMethod === "UPI" && (
                 <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                    UPI Payment
-                  </p>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">UPI Payment</p>
                   <div className={`p-4 border-2 ${
-                    selected.upiVerified
-                      ? "bg-green-50 border-green-300"
-                      : "bg-red-50 border-red-300"
+                    selected.upiVerified ? "bg-green-50 border-green-300" : "bg-red-50 border-red-300"
                   }`}>
                     <div className="flex items-center gap-2 mb-2">
                       {selected.upiVerified ? (
@@ -377,16 +366,15 @@ export default function AdminOrdersPage() {
                         {selected.upiVerified ? "UPI Verified & Paid" : "UPI Not Yet Verified"}
                       </span>
                     </div>
-
                     <p className="text-xs text-gray-500 mb-1">12-digit UTR / Transaction ID:</p>
                     {selected.upiTransactionId ? (
                       <div className="flex items-center gap-2">
                         <p className="font-mono font-bold text-lg tracking-widest text-brand-black bg-white px-3 py-2 border border-gray-200 flex-1 text-center select-all">
-                          {selected.upiTransactionId as string}
+                          {selected.upiTransactionId}
                         </p>
                         <button
                           onClick={() => {
-                            navigator.clipboard.writeText(selected.upiTransactionId as string);
+                            navigator.clipboard.writeText(selected.upiTransactionId!);
                             toast.success("UTR copied!");
                           }}
                           className="text-xs text-brand-red underline whitespace-nowrap"
@@ -397,17 +385,14 @@ export default function AdminOrdersPage() {
                     ) : (
                       <p className="text-sm text-gray-400 italic">Customer hasn't submitted UTR yet</p>
                     )}
-
                     {!selected.upiVerified && selected.upiTransactionId && (
                       <button
-                        onClick={() => handleVerifyUpi(selected.orderId as string)}
+                        onClick={() => handleVerifyUpi(selected.orderId)}
                         disabled={updating === selected.orderId}
                         className="mt-3 w-full flex items-center justify-center gap-2 bg-green-600 text-white py-2.5 text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-50"
                       >
                         <CheckCircle size={15} />
-                        {updating === selected.orderId
-                          ? "Verifying..."
-                          : "✅ Verify UPI & Confirm Order"}
+                        {updating === selected.orderId ? "Verifying..." : "✅ Verify UPI & Confirm Order"}
                       </button>
                     )}
                   </div>
@@ -416,28 +401,22 @@ export default function AdminOrdersPage() {
 
               {/* Items */}
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                  Items
-                </p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Items</p>
                 <ul className="space-y-2">
-                  {(selected.items as Record<string, unknown>[]).map((item, i) => (
+                  {selected.items.map((item, i) => (
                     <li key={i} className="flex justify-between items-start text-sm bg-gray-50 p-3">
                       <div>
-                        <p className="font-medium">{item.name as string}</p>
+                        <p className="font-medium">{item.name}</p>
                         {item.isCustom && (
-                          <span className="text-[10px] bg-brand-red text-white px-1.5 py-0.5">
-                            Custom
-                          </span>
+                          <span className="text-[10px] bg-brand-red text-white px-1.5 py-0.5">Custom</span>
                         )}
                         {item.customNote && (
-                          <p className="text-xs text-gray-500 mt-1 italic">
-                            Note: {item.customNote as string}
-                          </p>
+                          <p className="text-xs text-gray-500 mt-1 italic">Note: {item.customNote}</p>
                         )}
-                        <p className="text-xs text-gray-400">Qty: {item.quantity as number}</p>
+                        <p className="text-xs text-gray-400">Qty: {item.quantity}</p>
                       </div>
                       <span className="font-semibold text-brand-red whitespace-nowrap">
-                        ₹{((item.discountedPrice as number) * (item.quantity as number)).toLocaleString("en-IN")}
+                        ₹{(item.discountedPrice * item.quantity).toLocaleString("en-IN")}
                       </span>
                     </li>
                   ))}
@@ -448,33 +427,29 @@ export default function AdminOrdersPage() {
               <div className="bg-gray-50 p-4 space-y-2 text-sm">
                 <div className="flex justify-between text-gray-500">
                   <span>Subtotal</span>
-                  <span>₹{(selected.subtotal as number)?.toLocaleString("en-IN") || "—"}</span>
+                  <span>₹{selected.subtotal?.toLocaleString("en-IN") || "—"}</span>
                 </div>
                 <div className="flex justify-between text-gray-500">
                   <span>Shipping</span>
                   <span>
-                    {(selected.shippingCost as number) > 0
-                      ? `₹${(selected.shippingCost as number).toLocaleString("en-IN")}`
+                    {selected.shippingCost > 0
+                      ? `₹${selected.shippingCost.toLocaleString("en-IN")}`
                       : "FREE (Pickup)"}
                   </span>
                 </div>
                 <div className="flex justify-between font-heading font-bold text-lg border-t pt-2">
                   <span>Total</span>
-                  <span className="text-brand-red">
-                    ₹{(selected.totalAmount as number).toLocaleString("en-IN")}
-                  </span>
+                  <span className="text-brand-red">₹{selected.totalAmount.toLocaleString("en-IN")}</span>
                 </div>
               </div>
 
               {/* Update status */}
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                  Update Status
-                </p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Update Status</p>
                 <select
-                  value={selected.status as string}
+                  value={selected.status}
                   disabled={updating === selected.orderId}
-                  onChange={(e) => handleStatusChange(selected.orderId as string, e.target.value)}
+                  onChange={(e) => handleStatusChange(selected.orderId, e.target.value)}
                   className="w-full border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red bg-white disabled:opacity-50"
                 >
                   {ALL_STATUSES.map((s) => (
