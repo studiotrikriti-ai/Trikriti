@@ -68,8 +68,6 @@ export default function AdminProductsPage() {
         </p>
       </div>
 
-      
-
       {loading ? (
         <div className="space-y-3">
           {[...Array(6)].map((_, i) => <div key={i} className="h-20 skeleton rounded-sm" />)}
@@ -83,7 +81,8 @@ export default function AdminProductsPage() {
                 <Image
                   src={product.image || "https://placehold.co/64x64/f5f5f5/ccc?text=?"}
                   alt={product.name}
-                  fill className="object-cover"
+                  fill
+                  className="object-cover"
                 />
               </div>
 
@@ -98,45 +97,46 @@ export default function AdminProductsPage() {
                 <p className="text-xs text-gray-400 font-mono">{product._id}</p>
               </div>
 
-              {/* Price input */}
+              {/* Inputs */}
               <div className="flex flex-wrap gap-3 items-end">
                 <div>
                   <label className="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">Price (₹)</label>
                   <input
                     type="number"
-                    value={edits[product._id]?.price || product.price}
+                    value={edits[product._id]?.price ?? product.price}
                     onChange={(e) => setEdits((prev) => ({
                       ...prev,
-                      [product._id]: { ...prev[product._id], price: Number(e.target.value) }
+                      [product._id]: { ...prev[product._id], price: Number(e.target.value) },
                     }))}
                     className="w-24 border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:border-brand-red"
                   />
                 </div>
 
-                {/* Discount input */}
                 <div>
                   <label className="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">Discount (%)</label>
                   <input
                     type="number"
-                    min={0} max={100}
+                    min={0}
+                    max={100}
                     value={edits[product._id]?.discount ?? product.discount}
                     onChange={(e) => setEdits((prev) => ({
                       ...prev,
-                      [product._id]: { ...prev[product._id], discount: Number(e.target.value) }
+                      [product._id]: { ...prev[product._id], discount: Number(e.target.value) },
                     }))}
                     className="w-20 border border-gray-200 px-2 py-1.5 text-sm focus:outline-none focus:border-brand-red"
                   />
                 </div>
 
-                {/* Discounted price preview */}
                 <div>
                   <label className="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">Final Price</label>
                   <div className="w-24 bg-gray-50 border border-gray-100 px-2 py-1.5 text-sm font-semibold text-brand-red">
-                    ₹{Math.round((edits[product._id]?.price || product.price) * (1 - ((edits[product._id]?.discount ?? product.discount) / 100)))}
+                    ₹{Math.round(
+                      (edits[product._id]?.price ?? product.price) *
+                      (1 - (edits[product._id]?.discount ?? product.discount) / 100)
+                    )}
                   </div>
                 </div>
 
-                {/* Save button */}
                 <button
                   onClick={() => handleSave(product._id)}
                   disabled={saving === product._id}
@@ -146,7 +146,6 @@ export default function AdminProductsPage() {
                   {saving === product._id ? "Saving..." : "Save"}
                 </button>
 
-                {/* Stock toggle */}
                 <button
                   onClick={() => handleToggleStock(product._id, product.inStock)}
                   className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 transition-colors ${
