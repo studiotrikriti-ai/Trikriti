@@ -67,7 +67,7 @@ export default function AdminLoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="studiotrikriti@gmail.com"
+                  placeholder="admin_email_@gmail.com"
                   className="w-full bg-white/5 border border-white/10 pl-9 pr-4 py-3 text-white text-sm focus:outline-none focus:border-brand-red placeholder-gray-600 transition-colors"
                   required
                 />
