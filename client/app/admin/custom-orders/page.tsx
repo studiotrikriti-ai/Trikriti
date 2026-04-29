@@ -131,7 +131,7 @@ export default function AdminCustomOrdersPage() {
       );
       setSelected(updated);
       setNewStatus("Confirmed");
-      toast.success("✅ UPI verified — order confirmed!");
+      toast.success(" UPI verified — order confirmed!");
     } catch {
       toast.error("Failed to verify UPI");
     } finally {
