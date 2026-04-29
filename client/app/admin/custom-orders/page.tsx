@@ -159,7 +159,7 @@ export default function AdminCustomOrdersPage() {
         <div className="space-y-3">
           {orders.map((order) => {
             const c = order.customer as Record<string, unknown>;
-            const upiUnverified = order.upiTransactionId && !order.upiVerified;
+            const upiUnverified = Boolean(order.upiTransactionId) && !Boolean(order.upiVerified);
 
             return (
               <div
