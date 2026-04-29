@@ -102,14 +102,28 @@ export default function ProductCard({ product }: { product: Product }) {
 
         {/* CTA */}
         {product.isCustom ? (
-          // Custom products → navigate to product detail page
-          <Link
-            href={`/products/${product._id}`}
-            className="mt-auto flex items-center justify-center gap-2 py-2.5 text-sm font-semibold bg-brand-black text-white hover:bg-brand-red transition-all duration-200"
-          >
-            <ArrowRight size={15} />
-            Customize &amp; Order
-          </Link>
+          // Custom products → two options: add to cart as-is OR go customize
+          <div className="mt-auto flex gap-2">
+            <button
+              onClick={handleAddToCart}
+              disabled={!product.inStock}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold border-2 transition-all duration-200 ${
+                product.inStock
+                  ? "border-brand-black text-brand-black hover:bg-brand-black hover:text-white"
+                  : "border-gray-200 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              <ShoppingCart size={14} />
+              Add
+            </button>
+            <Link
+              href={`/products/${product._id}`}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold bg-brand-black text-white hover:bg-brand-red transition-all duration-200"
+            >
+              <ArrowRight size={14} />
+              Customize
+            </Link>
+          </div>
         ) : (
           // Regular products → add to cart directly
           <button
