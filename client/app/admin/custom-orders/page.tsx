@@ -44,7 +44,8 @@ export default function AdminCustomOrdersPage() {
 
   const fetchOrders = (status?: string) => {
     setLoading(true);
-    const params = status && status !== "all" ? { status } : {};
+    const params: Record<string, string> = {};
+    if (status && status !== "all") params.status = status;
     adminAPI
       .getCustomOrders(params)
       .then((res) => setOrders(res.data.orders))
