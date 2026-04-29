@@ -111,7 +111,7 @@ export default function AdminOrdersPage() {
       const updated: Order = res.data.order;
       setOrders((prev) => prev.map((o) => (o.orderId === orderId ? updated : o)));
       if (selected?.orderId === orderId) setSelected(updated);
-      toast.success("✅ UPI verified — order confirmed!");
+      toast.success(" UPI verified — order confirmed!");
     } catch {
       toast.error("Failed to verify UPI");
     } finally {
