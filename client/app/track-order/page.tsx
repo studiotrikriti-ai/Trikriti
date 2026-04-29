@@ -25,6 +25,48 @@ const STATUS_ICONS: Record<string, React.ElementType> = {
 
 const UPI_ID = "9175825605-2@ybl";
 
+// ── Typed order interfaces ──
+interface OrderAddress {
+  line1?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+}
+
+interface OrderCustomer {
+  name: string;
+  email: string;
+  phone: string;
+  address?: OrderAddress;
+}
+
+interface TrackedOrder {
+  _type: "regular" | "custom";
+  orderId?: string;
+  customOrderId?: string;
+  status: string;
+  deliveryMethod: string;
+  paymentMethod?: string;
+  paymentStatus?: string;
+  upiTransactionId?: string;
+  upiVerified?: boolean;
+  quotedPrice?: number;
+  totalAmount?: number;
+  subtotal?: number;
+  shippingCost?: number;
+  customer: OrderCustomer;
+  address?: OrderAddress;
+  items?: Array<{
+    name: string;
+    discountedPrice: number;
+    quantity: number;
+    isCustom?: boolean;
+    customNote?: string;
+  }>;
+  productName?: string;
+  customDescription?: string;
+}
+
 function UpiPaymentSection({
   customOrderId,
   totalAmount,
@@ -81,9 +123,7 @@ function UpiPaymentSection({
       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
         Pay Now — UPI
       </p>
-
       <div className="space-y-4">
-        {/* Amount to pay */}
         <div className="bg-brand-red/5 border border-brand-red/20 px-4 py-3 flex items-center justify-between">
           <span className="text-sm text-gray-600 font-medium">Amount to Pay</span>
           <span className="font-heading font-bold text-xl text-brand-red">
@@ -91,15 +131,12 @@ function UpiPaymentSection({
           </span>
         </div>
 
-        {/* Step 1 — QR + UPI ID */}
         <div>
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
             Step 1 — Scan QR or copy UPI ID
           </p>
           <div className="flex flex-col sm:flex-row gap-5 items-start">
-            {/* QR Code */}
             <div className="shrink-0 border-2 border-gray-100 p-2 rounded-sm bg-white">
-              {/* Replace /UPI_QR_IMAGE.png with your actual QR image in /public */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/UPI_QR_IMAGE.png"
@@ -110,8 +147,6 @@ function UpiPaymentSection({
               />
               <p className="text-[10px] text-center text-gray-400 mt-1">Scan to pay</p>
             </div>
-
-            {/* UPI ID */}
             <div className="flex-1 space-y-3">
               <div className="bg-gray-50 border border-gray-200 rounded-sm p-4">
                 <p className="text-xs text-gray-400 mb-1">UPI ID</p>
@@ -149,7 +184,6 @@ function UpiPaymentSection({
           </div>
         </div>
 
-        {/* Step 2 — Enter UTR */}
         <div>
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
             Step 2 — Enter 12-digit UTR / Transaction Number
@@ -207,7 +241,7 @@ function UpiPaymentSection({
 function TrackOrderContent() {
   const searchParams = useSearchParams();
   const [orderId, setOrderId] = useState(searchParams.get("orderId") || "");
-  const [order, setOrder] = useState<Record<string, unknown> | null>(null);
+  const [order, setOrder] = useState<TrackedOrder | null>(null);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
 
@@ -240,10 +274,9 @@ function TrackOrderContent() {
     }
   };
 
-  // Re-fetch order after UPI submitted so status updates live
   const refetchOrder = async () => {
     if (!order) return;
-    const id = (order.customOrderId || order.orderId) as string;
+    const id = order.customOrderId || order.orderId || "";
     try {
       if (id.startsWith("TKC-")) {
         const res = await customOrderAPI.track(id);
@@ -261,6 +294,7 @@ function TrackOrderContent() {
       setOrderId(urlOrderId);
       handleSearch(urlOrderId);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const isCustom = order?._type === "custom";
@@ -270,13 +304,8 @@ function TrackOrderContent() {
     ? isPickup ? CUSTOM_PICKUP_STEPS : CUSTOM_STEPS
     : isPickup ? PICKUP_STEPS : REGULAR_STEPS;
 
-  const currentStep = order ? steps.indexOf(order.status as string) : -1;
+  const currentStep = order ? steps.indexOf(order.status) : -1;
 
-  // Show UPI payment section for custom orders when:
-  // 1. Admin has set a price (quotedPrice exists)
-  // 2. Delivery is HOME_DELIVERY (not pickup)
-  // 3. Customer hasn't submitted UTR yet (no upiTransactionId)
-  // 4. Order is not yet confirmed/paid
   const showUpiPayment =
     isCustom &&
     !isPickup &&
@@ -287,6 +316,8 @@ function TrackOrderContent() {
     order?.status !== "Shipped" &&
     order?.status !== "Delivered" &&
     order?.status !== "Cancelled";
+
+  const displayAddress = order?.customer?.address || order?.address;
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6">
@@ -316,11 +347,7 @@ function TrackOrderContent() {
             disabled={loading}
             className="btn-primary flex items-center gap-2 disabled:opacity-50 whitespace-nowrap"
           >
-            {loading ? (
-              <Loader2 size={15} className="animate-spin" />
-            ) : (
-              <Search size={15} />
-            )}
+            {loading ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
             {loading ? "Searching..." : "Track"}
           </button>
         </div>
@@ -346,7 +373,7 @@ function TrackOrderContent() {
                 {isCustom ? "Custom Order" : "Order"} ID
               </p>
               <p className="font-mono font-bold text-lg">
-                {(order.orderId || order.customOrderId) as string}
+                {order.orderId || order.customOrderId}
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -361,7 +388,7 @@ function TrackOrderContent() {
                   ? "bg-red-100 text-red-600"
                   : "bg-gray-100 text-gray-600"
               }`}>
-                {order.status as string}
+                {order.status}
               </span>
               {isPickup && (
                 <span className="px-2 py-1 text-xs bg-orange-100 text-orange-600 font-medium">
@@ -404,9 +431,12 @@ function TrackOrderContent() {
                       }`}>
                         <Icon size={16} />
                       </div>
-                      <span className={`text-[9px] mt-2 font-medium text-center leading-tight ${
-                        done ? "text-brand-red" : "text-gray-400"
-                      }`} style={{ maxWidth: 56 }}>
+                      <span
+                        className={`text-[9px] mt-2 font-medium text-center leading-tight ${
+                          done ? "text-brand-red" : "text-gray-400"
+                        }`}
+                        style={{ maxWidth: 56 }}
+                      >
                         {step}
                       </span>
                     </div>
@@ -422,13 +452,13 @@ function TrackOrderContent() {
               <p className="font-semibold text-orange-700 text-sm mb-1">Pricing Pending</p>
               <p className="text-xs text-orange-600">
                 Our team will review your request and contact you at{" "}
-                <strong>{(order.customer as Record<string, unknown>)?.email as string}</strong>{" "}
+                <strong>{order.customer.email}</strong>{" "}
                 with pricing within 24 hours.
               </p>
             </div>
           )}
 
-          {/* Custom order price set — waiting for payment (HOME DELIVERY only) */}
+          {/* Payment pending verification */}
           {isCustom && order.quotedPrice && order.upiTransactionId && !order.upiVerified && (
             <div className="bg-yellow-50 border border-yellow-300 p-4 flex items-start gap-3">
               <Loader2 size={16} className="text-yellow-600 shrink-0 mt-0.5 animate-spin" />
@@ -437,17 +467,19 @@ function TrackOrderContent() {
                   Payment Under Verification
                 </p>
                 <p className="text-xs text-yellow-600">
-                  Your UTR <span className="font-mono font-bold">{order.upiTransactionId as string}</span> has been received. Admin will verify and confirm your order shortly.
+                  Your UTR{" "}
+                  <span className="font-mono font-bold">{order.upiTransactionId}</span>{" "}
+                  has been received. Admin will verify and confirm your order shortly.
                 </p>
               </div>
             </div>
           )}
 
-          {/* ── UPI Payment Section for Custom Orders ── */}
-          {showUpiPayment && (
+          {/* UPI Payment Section */}
+          {showUpiPayment && order.totalAmount && order.customOrderId && (
             <UpiPaymentSection
-              customOrderId={order.customOrderId as string}
-              totalAmount={order.totalAmount as number}
+              customOrderId={order.customOrderId}
+              totalAmount={order.totalAmount}
               onPaymentSubmitted={refetchOrder}
             />
           )}
@@ -456,26 +488,19 @@ function TrackOrderContent() {
           <div className="border-t pt-5">
             <h3 className="font-heading font-semibold mb-3 text-sm">Delivery Details</h3>
             <div className="text-sm text-gray-600 space-y-1 bg-gray-50 p-3">
-              {(() => {
-                const customer = order.customer as Record<string, unknown>;
-                const address = (customer?.address || order.address) as Record<string, unknown>;
-                return (
-                  <>
-                    <p><span className="font-medium">Name:</span> {customer?.name as string}</p>
-                    <p><span className="font-medium">Phone:</span> {customer?.phone as string}</p>
-                    <p><span className="font-medium">Method:</span>{" "}
-                      {isPickup ? "Pickup from Pune" : "Home Delivery"}
-                    </p>
-                    {!isPickup && address?.line1 && (
-                      <p>
-                        <span className="font-medium">Address:</span>{" "}
-                        {address.line1 as string}, {address.city as string},{" "}
-                        {address.state as string} – {address.pincode as string}
-                      </p>
-                    )}
-                  </>
-                );
-              })()}
+              <p><span className="font-medium">Name:</span> {order.customer.name}</p>
+              <p><span className="font-medium">Phone:</span> {order.customer.phone}</p>
+              <p>
+                <span className="font-medium">Method:</span>{" "}
+                {isPickup ? "Pickup from Pune" : "Home Delivery"}
+              </p>
+              {!isPickup && displayAddress?.line1 && (
+                <p>
+                  <span className="font-medium">Address:</span>{" "}
+                  {displayAddress.line1}, {displayAddress.city},{" "}
+                  {displayAddress.state} – {displayAddress.pincode}
+                </p>
+              )}
             </div>
           </div>
 
@@ -499,7 +524,7 @@ function TrackOrderContent() {
               <div className="text-right">
                 <p className="text-xs text-gray-400">Total Amount</p>
                 <p className="font-heading font-bold text-xl text-brand-red">
-                  ₹{(order.totalAmount as number).toLocaleString("en-IN")}
+                  ₹{order.totalAmount.toLocaleString("en-IN")}
                 </p>
               </div>
             ) : isCustom && !order.quotedPrice ? (
