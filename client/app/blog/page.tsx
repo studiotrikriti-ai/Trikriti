@@ -5,7 +5,7 @@ import { useEffect } from "react";
 const reels = [
   {
     id: 1,
-    shortcode: "DM-tRD8xggA",
+    shortcode: "DU-2aIeDK0F",
     title: "Start of our idea to print journey",
     date: "May 2025",
     desc: "From concept to creation — how Trikriti Studio came to life.",
@@ -14,15 +14,15 @@ const reels = [
   // e.g. shortcode: "ABC123xyz" from https://www.instagram.com/reel/ABC123xyz/
   {
     id: 2,
-    shortcode: "DWhANTJEf4r", // placeholder — replace with real shortcode
-    title: "Shiv Mudra",
+    shortcode: "DVD_fSzjJfl", // placeholder — replace with real shortcode
+    title: "Our Special product",
     date: "May 2025",
     desc: "A peek into our printing studio and quality control process.",
   },
   {
     id: 3,
-    shortcode: "DW-2RPqkRCh", // placeholder — replace with real shortcode
-    title: "Behind the Scenes: How We Print Your Orders",
+    shortcode: "DXPUgRsDFfV", // placeholder — replace with real shortcode
+    title: "Behind the Scenes",
     date: "Jun 2025",
     desc: "Learn how to create print-ready designs that look amazing on fabric.",
   },
