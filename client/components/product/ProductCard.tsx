@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { ShoppingCart, Zap, CheckCircle, ArrowRight } from "lucide-react";
+import { ShoppingCart, Zap, ArrowRight } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import toast from "react-hot-toast";
 
@@ -38,7 +38,10 @@ export default function ProductCard({ product }: { product: Product }) {
   return (
     <div className="product-card group flex flex-col">
       {/* Image */}
-      <Link href={`/products/${product._id}`} className="relative block aspect-square overflow-hidden bg-gray-50">
+      <Link
+        href={`/products/${product._id}`}
+        className="relative block aspect-square overflow-hidden bg-gray-50"
+      >
         <Image
           src={product.image}
           alt={product.name}
@@ -51,9 +54,9 @@ export default function ProductCard({ product }: { product: Product }) {
           </div>
         )}
         {product.isCustom && (
-          <div className="absolute top-2 right-2 bg-brand-black text-white text-xs px-1.5 py-0.5 flex items-center gap-1">
+          <div className="absolute top-2 right-2 bg-brand-black text-white text-xs px-1.5 py-0.5 flex items-center gap-0.5">
             <Zap size={9} />
-            <span className="hidden sm:inline">Custom</span>
+            <span>Custom</span>
           </div>
         )}
         {!product.inStock && (
@@ -66,21 +69,17 @@ export default function ProductCard({ product }: { product: Product }) {
       </Link>
 
       {/* Info */}
-      <div className="flex flex-col flex-1 p-2 sm:p-4 gap-2 sm:gap-3">
-        <div>
-          <Link href={`/products/${product._id}`}>
-            <h3 className="font-heading font-semibold text-xs sm:text-base leading-snug hover:text-brand-red transition-colors line-clamp-2">
-              {product.name}
-            </h3>
-          </Link>
-          <p className="text-gray-500 text-xs mt-1 line-clamp-2 hidden sm:block">
-            {product.description}
-          </p>
-        </div>
+      <div className="flex flex-col flex-1 p-2 sm:p-4 gap-1.5 sm:gap-3">
+        {/* Name */}
+        <Link href={`/products/${product._id}`}>
+          <h3 className="font-heading font-semibold text-xs sm:text-sm leading-snug hover:text-brand-red transition-colors line-clamp-2">
+            {product.name}
+          </h3>
+        </Link>
 
         {/* Price */}
-        <div className="flex items-baseline gap-1 sm:gap-2 flex-wrap">
-          <span className="font-heading font-bold text-sm sm:text-xl text-brand-red">
+        <div className="flex items-baseline gap-1 flex-wrap">
+          <span className="font-heading font-bold text-sm sm:text-lg text-brand-red">
             ₹{product.discountedPrice.toLocaleString("en-IN")}
           </span>
           {product.discount > 0 && (
@@ -90,55 +89,52 @@ export default function ProductCard({ product }: { product: Product }) {
           )}
         </div>
 
-        {/* Why Love It - hidden on mobile */}
-        {product.whyLoveIt && product.whyLoveIt.length > 0 && (
-          <ul className="space-y-1 hidden sm:block">
-            {product.whyLoveIt.slice(0, 2).map((point, i) => (
-              <li key={i} className="flex items-start gap-1.5 text-xs text-gray-500">
-                <CheckCircle size={11} className="text-brand-red shrink-0 mt-0.5" />
-                {point}
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {/* CTA */}
-        {product.isCustom ? (
-          <div className="mt-auto flex gap-1 sm:gap-2">
+        {/* CTA — desktop: full buttons, mobile: compact */}
+        <div className="mt-auto">
+          {product.isCustom ? (
+            <div className="flex flex-col gap-1 sm:flex-row sm:gap-2">
+              {/* Mobile: icon-only cart, full customize */}
+              <button
+                onClick={handleAddToCart}
+                disabled={!product.inStock}
+                aria-label="Add to cart"
+                className={`
+                  sm:flex-1 flex items-center justify-center
+                  w-full sm:w-auto
+                  gap-1 py-2 sm:py-2.5
+                  text-xs sm:text-sm font-semibold border-2 transition-all duration-200
+                  ${product.inStock
+                    ? "border-brand-black text-brand-black hover:bg-brand-black hover:text-white"
+                    : "border-gray-200 text-gray-400 cursor-not-allowed"
+                  }
+                `}
+              >
+                <ShoppingCart size={13} />
+                <span>Add to Cart</span>
+              </button>
+              <Link
+                href={`/products/${product._id}`}
+                className="sm:flex-1 flex items-center justify-center gap-1 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold bg-brand-black text-white hover:bg-brand-red transition-all duration-200"
+              >
+                <ArrowRight size={13} />
+                <span>Customize</span>
+              </Link>
+            </div>
+          ) : (
             <button
               onClick={handleAddToCart}
               disabled={!product.inStock}
-              className={`flex-1 flex items-center justify-center gap-1 py-2 text-xs sm:text-sm font-semibold border-2 transition-all duration-200 ${
+              className={`w-full flex items-center justify-center gap-1.5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold transition-all duration-200 ${
                 product.inStock
-                  ? "border-brand-black text-brand-black hover:bg-brand-black hover:text-white"
-                  : "border-gray-200 text-gray-400 cursor-not-allowed"
+                  ? "bg-brand-black text-white hover:bg-brand-red"
+                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
               }`}
             >
-              <ShoppingCart size={12} />
-              <span className="hidden sm:inline">Add</span>
+              <ShoppingCart size={13} />
+              <span>Add to Cart</span>
             </button>
-            <Link
-              href={`/products/${product._id}`}
-              className="flex-1 flex items-center justify-center gap-1 py-2 text-xs sm:text-sm font-semibold bg-brand-black text-white hover:bg-brand-red transition-all duration-200"
-            >
-              <ArrowRight size={12} />
-              <span>Customize</span>
-            </Link>
-          </div>
-        ) : (
-          <button
-            onClick={handleAddToCart}
-            disabled={!product.inStock}
-            className={`mt-auto flex items-center justify-center gap-1 sm:gap-2 py-2 text-xs sm:text-sm font-semibold transition-all duration-200 ${
-              product.inStock
-                ? "bg-brand-black text-white hover:bg-brand-red"
-                : "bg-gray-100 text-gray-400 cursor-not-allowed"
-            }`}
-          >
-            <ShoppingCart size={13} />
-            <span>Add to Cart</span>
-          </button>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
