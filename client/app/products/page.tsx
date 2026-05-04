@@ -48,7 +48,9 @@ export default function ProductsPage() {
       {/* Page Header */}
       <div className="bg-brand-black text-white py-14 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto">
-          <p className="text-brand-red text-xs font-bold tracking-[0.2em] uppercase mb-2">Browse</p>
+          <p className="text-brand-red text-xs font-bold tracking-[0.2em] uppercase mb-2">
+            Browse
+          </p>
           <h1 className="font-heading font-bold text-4xl sm:text-5xl">All Products</h1>
           <p className="text-gray-400 mt-2 font-body">
             {products.length} products available
@@ -60,7 +62,10 @@ export default function ProductsPage() {
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <div className="relative flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            />
             <input
               type="text"
               placeholder="Search products..."
@@ -89,14 +94,16 @@ export default function ProductsPage() {
         {/* Grid */}
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-            {[...Array(6)].map((_, i) => (
+            {[...Array(8)].map((_, i) => (
               <div key={i} className="aspect-[3/4] skeleton rounded-sm" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-gray-400 text-lg font-heading">No products found</p>
-            <p className="text-gray-300 text-sm mt-1">Try a different search or filter</p>
+            <p className="text-gray-300 text-sm mt-1">
+              Try a different search or filter
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
