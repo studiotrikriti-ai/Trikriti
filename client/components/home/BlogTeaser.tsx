@@ -8,18 +8,18 @@ import { useEffect } from "react";
 const reels = [
   {
     id: 1,
-    shortcode: "DM-tRD8xggA", // ✅ real reel
+    shortcode: "DU-2aIeDK0F", // ✅ real reel
     title: "Start of our idea to print journey",
   },
   {
     id: 2,
-    shortcode: "DWhANTJEf4r", //✅ real reel 
-    title: "Shiv Mudra",
+    shortcode: "DVD_fSzjJfl", //✅ real reel 
+    title: "Our Specail product",
   },
   {
     id: 3,
-    shortcode:"DW-2RPqkRCh", // 🔲 add shortcode when available
-    title: "Behind the Scenes: How We Print Your Orders",
+    shortcode:"DXPUgRsDFfV", // 🔲 add shortcode when available
+    title: "Behind the Scenes",
   },
 ];
 
