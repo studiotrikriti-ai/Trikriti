@@ -138,5 +138,6 @@ export default function ProductCard({ product }: { product: Product }) {
     </button>
   )}
 </div>
+      </div>
   );
 }
