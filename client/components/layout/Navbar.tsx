@@ -18,22 +18,6 @@ const navLinks = [
   { label: "Contact", href: "/contact" },
 ];
 
-const marqueeItems = [
-  "🖨️ Premium 3D Printed Products",
-  "✦",
-  "Mini Tumbler Keychains",
-  "✦",
-  "Aurora Prism Lamp — ₹1200",
-  "✦",
-  "Luna Swirl Lamp — ₹1300",
-  "✦",
-  "40% OFF Live Now",
-  "✦",
-  "Pan-India Delivery — ₹80",
-  "✦",
-  "Custom 3D Prints Available",
-  "✦",
-];
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -59,13 +43,7 @@ export default function Navbar() {
         }`}
       >
         {/* Marquee strip */}
-        <div className="bg-brand-black text-white text-xs py-1.5 overflow-hidden">
-          <div className="marquee-track whitespace-nowrap">
-            {[...marqueeItems, ...marqueeItems].map((text, i) => (
-              <span key={i} className="px-5">{text}</span>
-            ))}
-          </div>
-        </div>
+        
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
