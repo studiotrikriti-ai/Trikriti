@@ -18,7 +18,6 @@ const navLinks = [
   { label: "Contact", href: "/contact" },
 ];
 
-
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -42,9 +41,6 @@ export default function Navbar() {
           scrolled ? "bg-white shadow-sm border-b border-gray-100" : "bg-white/95 backdrop-blur-sm"
         }`}
       >
-        {/* Marquee strip */}
-        
-
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
@@ -55,7 +51,7 @@ export default function Navbar() {
                 width={140}
                 height={48}
                 priority
-                className="h-14 w-auto object-contain"
+                className="h-10 w-auto object-contain"
               />
             </Link>
 
@@ -207,8 +203,8 @@ export default function Navbar() {
         )}
       </header>
 
-      {/* Spacer */}
-      <div className="h-[calc(4rem+28px)]" />
+      {/* Spacer — now just the navbar height (4rem / h-16) */}
+      <div className="h-16" />
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
     </>
