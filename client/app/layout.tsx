@@ -12,8 +12,13 @@ export const metadata: Metadata = {
     "Premium custom printing services — T-shirts, mugs, tote bags, business cards and more. Quality printing, fast delivery.",
   keywords: ["custom printing", "t-shirt printing", "mug printing", "Trikriti Studio"],
   icons: {
-    icon: "/favicon-32x32.png",
-  },
+  icon: [
+    { url: "/favicon.ico" },
+    { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+  ],
+  shortcut: "/favicon.ico",
+  apple: "/apple-touch-icon.png",
+},
   openGraph: {
     title: "Trikriti Studio",
     description: "Where Ideas Get Printed",
