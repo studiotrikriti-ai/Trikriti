@@ -9,7 +9,7 @@ import { Toaster } from "react-hot-toast";
 export const metadata: Metadata = {
   title: "Trikriti Studio — Where Ideas Get Printed",
   description:
-    "Premium custom printing services —  mugs, tote bags, business cards and more. Quality printing, fast delivery.",
+    "Premium custom printing services —  mugs, tote bags, business and more. Quality printing, fast delivery.",
   keywords: ["custom printing", "mug printing", "Trikriti Studio"],
   icons: {
   icon: [
