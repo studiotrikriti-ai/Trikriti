@@ -11,7 +11,7 @@ const slides = [
     sub: "Premium 3D printed home decor, accessories & personalized gifts — crafted with care.",
     cta: "Shop Now",
     ctaHref: "/products",
-    image: "https://res.cloudinary.com/dcyclqzvy/image/upload/v1777295870/custom_raj_mudra_qg7oca.png",
+    image: "https://res.cloudinary.com/dcyclqzvy/image/upload/v1779901322/ShivMudra_hqdhxu.heic",
   },
   {
     id: 2,
