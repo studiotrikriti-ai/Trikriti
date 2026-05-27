@@ -5,10 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { productAPI, customOrderAPI } from "@/lib/api";
 import { useCart } from "@/context/CartContext";
-import {
-  CheckCircle, ShoppingCart, ArrowLeft, Zap,
-  Truck, Store, ChevronLeft, ChevronRight,
-} from "lucide-react";
+import { CheckCircle, ShoppingCart, ArrowLeft, Zap, Truck, Store, ChevronLeft, ChevronRight } from "lucide-react";
 import toast from "react-hot-toast";
 import Link from "next/link";
 
@@ -27,11 +24,12 @@ interface Product {
   category: string;
 }
 
-// ── Full-image Gallery ──────────────────────────────────────────────
+// ── Image Gallery with swipe support ──
 function ImageGallery({ product }: { product: Product }) {
-  // Build deduplicated image list
+  // Build final image list: deduplicate images array + main image
   const allImages = (() => {
-    const imgs = product.images?.length ? product.images : [];
+    const imgs = product.images?.length ? product.images : [product.image];
+    // ensure main image is included and no duplicates
     const seen = new Set<string>();
     const result: string[] = [];
     [product.image, ...imgs].forEach((src) => {
@@ -42,6 +40,7 @@ function ImageGallery({ product }: { product: Product }) {
 
   const [current, setCurrent] = useState(0);
   const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
 
   const prev = () => setCurrent((c) => (c === 0 ? allImages.length - 1 : c - 1));
   const next = () => setCurrent((c) => (c === allImages.length - 1 ? 0 : c + 1));
@@ -50,60 +49,59 @@ function ImageGallery({ product }: { product: Product }) {
     touchStartX.current = e.changedTouches[0].clientX;
   };
   const onTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const diff = touchStartX.current - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 40) diff > 0 ? next() : prev();
+    touchEndX.current = e.changedTouches[0].clientX;
+    if (touchStartX.current !== null && touchEndX.current !== null) {
+      const diff = touchStartX.current - touchEndX.current;
+      if (Math.abs(diff) > 40) diff > 0 ? next() : prev();
+    }
     touchStartX.current = null;
+    touchEndX.current = null;
   };
 
   return (
     <div className="flex flex-col gap-3">
-      {/* ── Main image: fixed square, object-contain so nothing is cropped ── */}
+      {/* Main image */}
       <div
-        className="relative w-full bg-white border border-gray-100 rounded-sm overflow-hidden select-none"
-        style={{ paddingBottom: "100%" }} // 1:1 square
+        className="relative aspect-square bg-gray-50 rounded-sm overflow-hidden select-none"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
-        <div className="absolute inset-0 flex items-center justify-center p-4">
-          <Image
-            src={allImages[current] || "https://placehold.co/600x600/f5f5f5/ccc?text=Product"}
-            alt={`${product.name} — image ${current + 1}`}
-            fill
-            className="object-contain"   /* ← contain = full image visible, no cropping */
-            priority
-            sizes="(max-width: 1024px) 100vw, 50vw"
-          />
-        </div>
+        <Image
+          src={allImages[current] || "https://placehold.co/600x600/f5f5f5/ccc?text=Product"}
+          alt={`${product.name} - image ${current + 1}`}
+          fill
+          className="object-cover transition-opacity duration-200"
+          priority
+        />
 
-        {/* Badges */}
+        {/* Discount badge */}
         {product.discount > 0 && (
-          <div className="absolute top-3 left-3 bg-brand-red text-white text-xs font-bold px-2.5 py-1 z-10">
+          <div className="absolute top-4 left-4 bg-brand-red text-white text-sm font-bold px-3 py-1 z-10">
             -{product.discount}% OFF
           </div>
         )}
         {product.isCustom && (
-          <div className="absolute top-3 right-3 bg-brand-black text-white text-xs px-2 py-1 flex items-center gap-1 z-10">
+          <div className="absolute top-4 right-4 bg-brand-black text-white text-xs px-2 py-1 flex items-center gap-1 z-10">
             <Zap size={10} /> Custom
           </div>
         )}
 
-        {/* Arrows — only when multiple images */}
+        {/* Arrow buttons — only show if multiple images */}
         {allImages.length > 1 && (
           <>
             <button
               onClick={prev}
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-white shadow-md border border-gray-100 flex items-center justify-center rounded-full hover:bg-gray-50 transition z-10"
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/80 hover:bg-white shadow-md flex items-center justify-center rounded-full transition-all z-10"
               aria-label="Previous image"
             >
-              <ChevronLeft size={18} className="text-gray-700" />
+              <ChevronLeft size={18} />
             </button>
             <button
               onClick={next}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-white shadow-md border border-gray-100 flex items-center justify-center rounded-full hover:bg-gray-50 transition z-10"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-white/80 hover:bg-white shadow-md flex items-center justify-center rounded-full transition-all z-10"
               aria-label="Next image"
             >
-              <ChevronRight size={18} className="text-gray-700" />
+              <ChevronRight size={18} />
             </button>
 
             {/* Dot indicators */}
@@ -112,12 +110,10 @@ function ImageGallery({ product }: { product: Product }) {
                 <button
                   key={i}
                   onClick={() => setCurrent(i)}
-                  className={`rounded-full transition-all ${
-                    i === current
-                      ? "w-5 h-2 bg-brand-red"
-                      : "w-2 h-2 bg-gray-300 hover:bg-gray-400"
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    i === current ? "bg-brand-red scale-110" : "bg-white/70"
                   }`}
-                  aria-label={`Image ${i + 1}`}
+                  aria-label={`Go to image ${i + 1}`}
                 />
               ))}
             </div>
@@ -125,25 +121,22 @@ function ImageGallery({ product }: { product: Product }) {
         )}
       </div>
 
-      {/* ── Thumbnails — square, object-contain, no cropping ── */}
+      {/* Thumbnail strip — only show if multiple images */}
       {allImages.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {allImages.map((src, i) => (
             <button
               key={i}
               onClick={() => setCurrent(i)}
-              className={`relative shrink-0 w-16 h-16 sm:w-20 sm:h-20 bg-white border-2 rounded-sm overflow-hidden transition-all flex items-center justify-center ${
-                i === current
-                  ? "border-brand-red"
-                  : "border-gray-200 hover:border-gray-400"
+              className={`relative w-16 h-16 shrink-0 rounded-sm overflow-hidden border-2 transition-all ${
+                i === current ? "border-brand-red" : "border-gray-200 hover:border-gray-400"
               }`}
             >
               <Image
                 src={src}
                 alt={`Thumbnail ${i + 1}`}
                 fill
-                className="object-contain p-1"  /* ← contain + padding so nothing is cropped */
-                sizes="80px"
+                className="object-cover"
               />
             </button>
           ))}
@@ -153,7 +146,6 @@ function ImageGallery({ product }: { product: Product }) {
   );
 }
 
-// ── Main Page ───────────────────────────────────────────────────────
 export default function ProductDetailPage() {
   const { id } = useParams();
   const [product, setProduct] = useState<Product | null>(null);
@@ -161,9 +153,10 @@ export default function ProductDetailPage() {
   const [qty, setQty] = useState(1);
   const { addToCart } = useCart();
   const router = useRouter();
+
   const [mode, setMode] = useState<"cart" | "customize">("cart");
 
-  // Custom inquiry form
+  // ── Custom inquiry form state ──
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -193,7 +186,7 @@ export default function ProductDetailPage() {
         <div className="space-y-3">
           <div className="aspect-square skeleton rounded-sm" />
           <div className="flex gap-2">
-            {[1, 2, 3].map((i) => <div key={i} className="w-20 h-20 skeleton rounded-sm" />)}
+            {[1, 2, 3].map((i) => <div key={i} className="w-16 h-16 skeleton rounded-sm" />)}
           </div>
         </div>
         <div className="space-y-4">
@@ -227,7 +220,10 @@ export default function ProductDetailPage() {
 
   const handleInquirySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customDescription.trim()) { toast.error("Please describe what you want"); return; }
+    if (!customDescription.trim()) {
+      toast.error("Please describe what you want");
+      return;
+    }
     if (deliveryMethod === "HOME_DELIVERY" && (!line1 || !city || !stateName || !pincode)) {
       toast.error("Please fill in your complete delivery address");
       return;
@@ -239,9 +235,10 @@ export default function ProductDetailPage() {
         productId: product._id,
         customDescription,
         deliveryMethod,
-        address: deliveryMethod === "HOME_DELIVERY"
-          ? { line1, city, state: stateName, pincode }
-          : undefined,
+        address:
+          deliveryMethod === "HOME_DELIVERY"
+            ? { line1, city, state: stateName, pincode }
+            : undefined,
       });
       setSubmittedId(res.data.customOrderId);
       setSubmitted(true);
@@ -286,11 +283,11 @@ export default function ProductDetailPage() {
           {product.isCustom ? "Back to Custom Products" : "Back to Products"}
         </Link>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14">
-          {/* Gallery */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          {/* ── Image Gallery ── */}
           <ImageGallery product={product} />
 
-          {/* Info */}
+          {/* ── Info + Actions ── */}
           <div className="flex flex-col gap-6">
             <div>
               <p className="text-brand-red text-xs font-bold tracking-widest uppercase mb-1">
@@ -302,7 +299,7 @@ export default function ProductDetailPage() {
             </div>
 
             {/* Price */}
-            <div className="flex items-baseline gap-3 flex-wrap">
+            <div className="flex items-baseline gap-3">
               <span className="font-heading font-black text-4xl text-brand-red">
                 ₹{product.discountedPrice.toLocaleString("en-IN")}
               </span>
@@ -337,12 +334,15 @@ export default function ProductDetailPage() {
             {/* ── CUSTOM PRODUCT ── */}
             {product.isCustom ? (
               <div className="border-t border-gray-100 pt-4 space-y-4">
+                {/* Tab toggle */}
                 <div className="grid grid-cols-2 border border-gray-200">
                   <button
                     type="button"
                     onClick={() => setMode("cart")}
                     className={`flex items-center justify-center gap-2 py-2.5 text-sm font-semibold transition-colors ${
-                      mode === "cart" ? "bg-brand-black text-white" : "bg-white text-gray-500 hover:bg-gray-50"
+                      mode === "cart"
+                        ? "bg-brand-black text-white"
+                        : "bg-white text-gray-500 hover:bg-gray-50"
                     }`}
                   >
                     <ShoppingCart size={14} /> Add to Cart
@@ -351,16 +351,21 @@ export default function ProductDetailPage() {
                     type="button"
                     onClick={() => setMode("customize")}
                     className={`flex items-center justify-center gap-2 py-2.5 text-sm font-semibold transition-colors ${
-                      mode === "customize" ? "bg-brand-red text-white" : "bg-white text-gray-500 hover:bg-gray-50"
+                      mode === "customize"
+                        ? "bg-brand-red text-white"
+                        : "bg-white text-gray-500 hover:bg-gray-50"
                     }`}
                   >
                     <Zap size={14} /> Customize
                   </button>
                 </div>
 
+                {/* Cart mode */}
                 {mode === "cart" && (
                   <div className="space-y-4">
-                    <p className="text-sm text-gray-500">Order this product as-is at the listed price.</p>
+                    <p className="text-sm text-gray-500">
+                      Order this product as-is at the listed price. No customization — ships standard.
+                    </p>
                     <div className="flex items-center gap-4">
                       <span className="text-sm font-medium">Quantity:</span>
                       <div className="flex items-center border border-gray-200">
@@ -376,20 +381,35 @@ export default function ProductDetailPage() {
                       </span>
                     </div>
                     <div className="flex gap-3 flex-col sm:flex-row">
-                      <button onClick={handleAddToCart} disabled={!product.inStock} className={`flex-1 flex items-center justify-center gap-2 py-3 font-semibold text-sm border-2 transition-all ${product.inStock ? "border-brand-black text-brand-black hover:bg-brand-black hover:text-white" : "border-gray-200 text-gray-300 cursor-not-allowed"}`}>
+                      <button
+                        onClick={handleAddToCart}
+                        disabled={!product.inStock}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 font-semibold text-sm border-2 transition-all ${
+                          product.inStock
+                            ? "border-brand-black text-brand-black hover:bg-brand-black hover:text-white"
+                            : "border-gray-200 text-gray-300 cursor-not-allowed"
+                        }`}
+                      >
                         <ShoppingCart size={16} /> Add to Cart
                       </button>
-                      <button onClick={handleBuyNow} disabled={!product.inStock} className={`flex-1 py-3 font-semibold text-sm transition-all ${product.inStock ? "btn-primary" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}>
+                      <button
+                        onClick={handleBuyNow}
+                        disabled={!product.inStock}
+                        className={`flex-1 py-3 font-semibold text-sm transition-all ${
+                          product.inStock ? "btn-primary" : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        }`}
+                      >
                         Buy Now
                       </button>
                     </div>
                   </div>
                 )}
 
+                {/* Customize mode */}
                 {mode === "customize" && (
                   <form onSubmit={handleInquirySubmit} className="space-y-4">
                     <div className="bg-orange-50 border border-orange-200 px-4 py-3 text-sm text-orange-700">
-                      <strong>Price quoted after review.</strong> We'll contact you within 24 hours.
+                      <strong>Price quoted after review.</strong> Submit your request and we'll contact you with pricing within 24 hours.
                     </div>
                     <h3 className="font-heading font-semibold text-base">Your Details</h3>
                     <input required type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Full Name *" className="w-full border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red" />
@@ -399,10 +419,10 @@ export default function ProductDetailPage() {
                     </div>
                     <textarea required rows={3} value={customDescription} onChange={(e) => setCustomDescription(e.target.value)} placeholder="Describe your customization — name, colour, text, occasion, etc. *" className="w-full border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red resize-none" />
                     <div className="grid grid-cols-2 gap-3">
-                      <button type="button" onClick={() => setDeliveryMethod("PICKUP")} className={`flex items-center gap-2 p-3 border-2 text-sm font-medium transition-colors ${deliveryMethod === "PICKUP" ? "border-brand-red bg-red-50 text-brand-red" : "border-gray-200 text-gray-500"}`}>
+                      <button type="button" onClick={() => setDeliveryMethod("PICKUP")} className={`flex items-center gap-2 p-3 border-2 text-sm font-medium transition-colors ${deliveryMethod === "PICKUP" ? "border-brand-red bg-red-50 text-brand-red" : "border-gray-200 text-gray-500 hover:border-gray-300"}`}>
                         <Store size={15} /> Pickup (Free)
                       </button>
-                      <button type="button" onClick={() => setDeliveryMethod("HOME_DELIVERY")} className={`flex items-center gap-2 p-3 border-2 text-sm font-medium transition-colors ${deliveryMethod === "HOME_DELIVERY" ? "border-brand-red bg-red-50 text-brand-red" : "border-gray-200 text-gray-500"}`}>
+                      <button type="button" onClick={() => setDeliveryMethod("HOME_DELIVERY")} className={`flex items-center gap-2 p-3 border-2 text-sm font-medium transition-colors ${deliveryMethod === "HOME_DELIVERY" ? "border-brand-red bg-red-50 text-brand-red" : "border-gray-200 text-gray-500 hover:border-gray-300"}`}>
                         <Truck size={15} /> Delivery (₹94)
                       </button>
                     </div>
