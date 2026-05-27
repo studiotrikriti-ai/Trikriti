@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { productAPI, customOrderAPI } from "@/lib/api";
 import { useCart } from "@/context/CartContext";
-import { CheckCircle, ShoppingCart, ArrowLeft, Zap, Truck, Store } from "lucide-react";
+import {
+  CheckCircle, ShoppingCart, ArrowLeft, Zap,
+  Truck, Store, ChevronLeft, ChevronRight,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import Link from "next/link";
 
@@ -24,6 +27,133 @@ interface Product {
   category: string;
 }
 
+// ── Full-image Gallery ──────────────────────────────────────────────
+function ImageGallery({ product }: { product: Product }) {
+  // Build deduplicated image list
+  const allImages = (() => {
+    const imgs = product.images?.length ? product.images : [];
+    const seen = new Set<string>();
+    const result: string[] = [];
+    [product.image, ...imgs].forEach((src) => {
+      if (src && !seen.has(src)) { seen.add(src); result.push(src); }
+    });
+    return result;
+  })();
+
+  const [current, setCurrent] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+
+  const prev = () => setCurrent((c) => (c === 0 ? allImages.length - 1 : c - 1));
+  const next = () => setCurrent((c) => (c === allImages.length - 1 ? 0 : c + 1));
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.changedTouches[0].clientX;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) diff > 0 ? next() : prev();
+    touchStartX.current = null;
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* ── Main image: fixed square, object-contain so nothing is cropped ── */}
+      <div
+        className="relative w-full bg-white border border-gray-100 rounded-sm overflow-hidden select-none"
+        style={{ paddingBottom: "100%" }} // 1:1 square
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
+        <div className="absolute inset-0 flex items-center justify-center p-4">
+          <Image
+            src={allImages[current] || "https://placehold.co/600x600/f5f5f5/ccc?text=Product"}
+            alt={`${product.name} — image ${current + 1}`}
+            fill
+            className="object-contain"   /* ← contain = full image visible, no cropping */
+            priority
+            sizes="(max-width: 1024px) 100vw, 50vw"
+          />
+        </div>
+
+        {/* Badges */}
+        {product.discount > 0 && (
+          <div className="absolute top-3 left-3 bg-brand-red text-white text-xs font-bold px-2.5 py-1 z-10">
+            -{product.discount}% OFF
+          </div>
+        )}
+        {product.isCustom && (
+          <div className="absolute top-3 right-3 bg-brand-black text-white text-xs px-2 py-1 flex items-center gap-1 z-10">
+            <Zap size={10} /> Custom
+          </div>
+        )}
+
+        {/* Arrows — only when multiple images */}
+        {allImages.length > 1 && (
+          <>
+            <button
+              onClick={prev}
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-white shadow-md border border-gray-100 flex items-center justify-center rounded-full hover:bg-gray-50 transition z-10"
+              aria-label="Previous image"
+            >
+              <ChevronLeft size={18} className="text-gray-700" />
+            </button>
+            <button
+              onClick={next}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 bg-white shadow-md border border-gray-100 flex items-center justify-center rounded-full hover:bg-gray-50 transition z-10"
+              aria-label="Next image"
+            >
+              <ChevronRight size={18} className="text-gray-700" />
+            </button>
+
+            {/* Dot indicators */}
+            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
+              {allImages.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrent(i)}
+                  className={`rounded-full transition-all ${
+                    i === current
+                      ? "w-5 h-2 bg-brand-red"
+                      : "w-2 h-2 bg-gray-300 hover:bg-gray-400"
+                  }`}
+                  aria-label={`Image ${i + 1}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ── Thumbnails — square, object-contain, no cropping ── */}
+      {allImages.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {allImages.map((src, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrent(i)}
+              className={`relative shrink-0 w-16 h-16 sm:w-20 sm:h-20 bg-white border-2 rounded-sm overflow-hidden transition-all flex items-center justify-center ${
+                i === current
+                  ? "border-brand-red"
+                  : "border-gray-200 hover:border-gray-400"
+              }`}
+            >
+              <Image
+                src={src}
+                alt={`Thumbnail ${i + 1}`}
+                fill
+                className="object-contain p-1"  /* ← contain + padding so nothing is cropped */
+                sizes="80px"
+              />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main Page ───────────────────────────────────────────────────────
 export default function ProductDetailPage() {
   const { id } = useParams();
   const [product, setProduct] = useState<Product | null>(null);
@@ -31,11 +161,9 @@ export default function ProductDetailPage() {
   const [qty, setQty] = useState(1);
   const { addToCart } = useCart();
   const router = useRouter();
-
-  // "customize" tab vs "add to cart" tab for custom products
   const [mode, setMode] = useState<"cart" | "customize">("cart");
 
-  // ── Custom inquiry form state ──
+  // Custom inquiry form
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -62,7 +190,12 @@ export default function ProductDetailPage() {
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 grid grid-cols-1 lg:grid-cols-2 gap-10">
-        <div className="aspect-square skeleton rounded-sm" />
+        <div className="space-y-3">
+          <div className="aspect-square skeleton rounded-sm" />
+          <div className="flex gap-2">
+            {[1, 2, 3].map((i) => <div key={i} className="w-20 h-20 skeleton rounded-sm" />)}
+          </div>
+        </div>
         <div className="space-y-4">
           <div className="h-8 skeleton rounded-sm" />
           <div className="h-4 skeleton rounded-sm w-1/2" />
@@ -74,7 +207,6 @@ export default function ProductDetailPage() {
 
   if (!product) return null;
 
-  // ── Regular + custom "add to cart" handler ──
   const handleAddToCart = () => {
     addToCart({
       productId: product._id,
@@ -93,13 +225,9 @@ export default function ProductDetailPage() {
     router.push("/checkout");
   };
 
-  // ── Custom inquiry submit ──
   const handleInquirySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customDescription.trim()) {
-      toast.error("Please describe what you want");
-      return;
-    }
+    if (!customDescription.trim()) { toast.error("Please describe what you want"); return; }
     if (deliveryMethod === "HOME_DELIVERY" && (!line1 || !city || !stateName || !pincode)) {
       toast.error("Please fill in your complete delivery address");
       return;
@@ -111,10 +239,9 @@ export default function ProductDetailPage() {
         productId: product._id,
         customDescription,
         deliveryMethod,
-        address:
-          deliveryMethod === "HOME_DELIVERY"
-            ? { line1, city, state: stateName, pincode }
-            : undefined,
+        address: deliveryMethod === "HOME_DELIVERY"
+          ? { line1, city, state: stateName, pincode }
+          : undefined,
       });
       setSubmittedId(res.data.customOrderId);
       setSubmitted(true);
@@ -125,7 +252,6 @@ export default function ProductDetailPage() {
     }
   };
 
-  // ── Success screen for custom inquiry ──
   if (submitted) {
     return (
       <div className="min-h-screen bg-brand-white flex items-center justify-center px-4">
@@ -156,31 +282,15 @@ export default function ProductDetailPage() {
           href={product.isCustom ? "/custom" : "/products"}
           className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-brand-red mb-8 transition-colors"
         >
-          <ArrowLeft size={16} /> {product.isCustom ? "Back to Custom Products" : "Back to Products"}
+          <ArrowLeft size={16} />
+          {product.isCustom ? "Back to Custom Products" : "Back to Products"}
         </Link>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-          {/* Image */}
-          <div className="relative aspect-square bg-gray-50 rounded-sm overflow-hidden">
-            <Image
-              src={product.image || "https://placehold.co/600x600/f5f5f5/ccc?text=Product+Image"}
-              alt={product.name}
-              fill
-              className="object-cover"
-            />
-            {product.discount > 0 && (
-              <div className="absolute top-4 left-4 bg-brand-red text-white text-sm font-bold px-3 py-1">
-                -{product.discount}% OFF
-              </div>
-            )}
-            {product.isCustom && (
-              <div className="absolute top-4 right-4 bg-brand-black text-white text-xs px-2 py-1 flex items-center gap-1">
-                <Zap size={10} /> Custom
-              </div>
-            )}
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14">
+          {/* Gallery */}
+          <ImageGallery product={product} />
 
-          {/* Info + Actions */}
+          {/* Info */}
           <div className="flex flex-col gap-6">
             <div>
               <p className="text-brand-red text-xs font-bold tracking-widest uppercase mb-1">
@@ -191,8 +301,8 @@ export default function ProductDetailPage() {
               </h1>
             </div>
 
-            {/* Price — always show */}
-            <div className="flex items-baseline gap-3">
+            {/* Price */}
+            <div className="flex items-baseline gap-3 flex-wrap">
               <span className="font-heading font-black text-4xl text-brand-red">
                 ₹{product.discountedPrice.toLocaleString("en-IN")}
               </span>
@@ -224,59 +334,39 @@ export default function ProductDetailPage() {
               </div>
             )}
 
-            {/* ── CUSTOM PRODUCT: mode tabs + content ── */}
+            {/* ── CUSTOM PRODUCT ── */}
             {product.isCustom ? (
               <div className="border-t border-gray-100 pt-4 space-y-4">
-                {/* Tab toggle */}
                 <div className="grid grid-cols-2 border border-gray-200">
                   <button
                     type="button"
                     onClick={() => setMode("cart")}
                     className={`flex items-center justify-center gap-2 py-2.5 text-sm font-semibold transition-colors ${
-                      mode === "cart"
-                        ? "bg-brand-black text-white"
-                        : "bg-white text-gray-500 hover:bg-gray-50"
+                      mode === "cart" ? "bg-brand-black text-white" : "bg-white text-gray-500 hover:bg-gray-50"
                     }`}
                   >
-                    <ShoppingCart size={14} />
-                    Add to Cart
+                    <ShoppingCart size={14} /> Add to Cart
                   </button>
                   <button
                     type="button"
                     onClick={() => setMode("customize")}
                     className={`flex items-center justify-center gap-2 py-2.5 text-sm font-semibold transition-colors ${
-                      mode === "customize"
-                        ? "bg-brand-red text-white"
-                        : "bg-white text-gray-500 hover:bg-gray-50"
+                      mode === "customize" ? "bg-brand-red text-white" : "bg-white text-gray-500 hover:bg-gray-50"
                     }`}
                   >
-                    <Zap size={14} />
-                    Customize
+                    <Zap size={14} /> Customize
                   </button>
                 </div>
 
-                {/* ── MODE: Add to cart as-is ── */}
                 {mode === "cart" && (
                   <div className="space-y-4">
-                    <p className="text-sm text-gray-500">
-                      Order this product as-is at the listed price. No customization — ships standard.
-                    </p>
+                    <p className="text-sm text-gray-500">Order this product as-is at the listed price.</p>
                     <div className="flex items-center gap-4">
                       <span className="text-sm font-medium">Quantity:</span>
                       <div className="flex items-center border border-gray-200">
-                        <button
-                          onClick={() => setQty((q) => Math.max(1, q - 1))}
-                          className="w-10 h-10 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                        >
-                          −
-                        </button>
+                        <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="w-10 h-10 flex items-center justify-center hover:bg-gray-50">−</button>
                         <span className="w-12 text-center text-sm font-medium">{qty}</span>
-                        <button
-                          onClick={() => setQty((q) => q + 1)}
-                          className="w-10 h-10 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                        >
-                          +
-                        </button>
+                        <button onClick={() => setQty((q) => q + 1)} className="w-10 h-10 flex items-center justify-center hover:bg-gray-50">+</button>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -286,202 +376,74 @@ export default function ProductDetailPage() {
                       </span>
                     </div>
                     <div className="flex gap-3 flex-col sm:flex-row">
-                      <button
-                        onClick={handleAddToCart}
-                        disabled={!product.inStock}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 font-semibold text-sm border-2 transition-all ${
-                          product.inStock
-                            ? "border-brand-black text-brand-black hover:bg-brand-black hover:text-white"
-                            : "border-gray-200 text-gray-300 cursor-not-allowed"
-                        }`}
-                      >
-                        <ShoppingCart size={16} />
-                        Add to Cart
+                      <button onClick={handleAddToCart} disabled={!product.inStock} className={`flex-1 flex items-center justify-center gap-2 py-3 font-semibold text-sm border-2 transition-all ${product.inStock ? "border-brand-black text-brand-black hover:bg-brand-black hover:text-white" : "border-gray-200 text-gray-300 cursor-not-allowed"}`}>
+                        <ShoppingCart size={16} /> Add to Cart
                       </button>
-                      <button
-                        onClick={handleBuyNow}
-                        disabled={!product.inStock}
-                        className={`flex-1 py-3 font-semibold text-sm transition-all ${
-                          product.inStock ? "btn-primary" : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                        }`}
-                      >
+                      <button onClick={handleBuyNow} disabled={!product.inStock} className={`flex-1 py-3 font-semibold text-sm transition-all ${product.inStock ? "btn-primary" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}>
                         Buy Now
                       </button>
                     </div>
                   </div>
                 )}
 
-                {/* ── MODE: Customize inquiry form ── */}
                 {mode === "customize" && (
                   <form onSubmit={handleInquirySubmit} className="space-y-4">
                     <div className="bg-orange-50 border border-orange-200 px-4 py-3 text-sm text-orange-700">
-                      <strong>Price quoted after review.</strong> Submit your request and we'll contact you with pricing within 24 hours.
+                      <strong>Price quoted after review.</strong> We'll contact you within 24 hours.
                     </div>
-
                     <h3 className="font-heading font-semibold text-base">Your Details</h3>
-
-                    <input
-                      required
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Full Name *"
-                      className="w-full border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red"
-                    />
+                    <input required type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Full Name *" className="w-full border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red" />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input
-                        required
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Email *"
-                        className="w-full border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red"
-                      />
-                      <input
-                        required
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="Phone *"
-                        className="w-full border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red"
-                      />
+                      <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email *" className="w-full border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red" />
+                      <input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone *" className="w-full border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red" />
                     </div>
-
-                    <textarea
-                      required
-                      rows={3}
-                      value={customDescription}
-                      onChange={(e) => setCustomDescription(e.target.value)}
-                      placeholder="Describe your customization — name, colour, text, occasion, etc. *"
-                      className="w-full border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red resize-none"
-                    />
-
-                    {/* Delivery toggle */}
+                    <textarea required rows={3} value={customDescription} onChange={(e) => setCustomDescription(e.target.value)} placeholder="Describe your customization — name, colour, text, occasion, etc. *" className="w-full border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red resize-none" />
                     <div className="grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setDeliveryMethod("PICKUP")}
-                        className={`flex items-center gap-2 p-3 border-2 text-sm font-medium transition-colors ${
-                          deliveryMethod === "PICKUP"
-                            ? "border-brand-red bg-red-50 text-brand-red"
-                            : "border-gray-200 text-gray-500 hover:border-gray-300"
-                        }`}
-                      >
+                      <button type="button" onClick={() => setDeliveryMethod("PICKUP")} className={`flex items-center gap-2 p-3 border-2 text-sm font-medium transition-colors ${deliveryMethod === "PICKUP" ? "border-brand-red bg-red-50 text-brand-red" : "border-gray-200 text-gray-500"}`}>
                         <Store size={15} /> Pickup (Free)
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeliveryMethod("HOME_DELIVERY")}
-                        className={`flex items-center gap-2 p-3 border-2 text-sm font-medium transition-colors ${
-                          deliveryMethod === "HOME_DELIVERY"
-                            ? "border-brand-red bg-red-50 text-brand-red"
-                            : "border-gray-200 text-gray-500 hover:border-gray-300"
-                        }`}
-                      >
+                      <button type="button" onClick={() => setDeliveryMethod("HOME_DELIVERY")} className={`flex items-center gap-2 p-3 border-2 text-sm font-medium transition-colors ${deliveryMethod === "HOME_DELIVERY" ? "border-brand-red bg-red-50 text-brand-red" : "border-gray-200 text-gray-500"}`}>
                         <Truck size={15} /> Delivery (₹94)
                       </button>
                     </div>
-
-                    {/* Address — only if home delivery */}
                     {deliveryMethod === "HOME_DELIVERY" && (
                       <div className="space-y-3 bg-gray-50 p-3 border border-gray-100">
-                        <input
-                          required
-                          type="text"
-                          value={line1}
-                          onChange={(e) => setLine1(e.target.value)}
-                          placeholder="Address Line 1 *"
-                          className="w-full border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red bg-white"
-                        />
+                        <input required type="text" value={line1} onChange={(e) => setLine1(e.target.value)} placeholder="Address Line 1 *" className="w-full border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red bg-white" />
                         <div className="grid grid-cols-3 gap-3">
-                          <input
-                            required
-                            type="text"
-                            value={city}
-                            onChange={(e) => setCity(e.target.value)}
-                            placeholder="City *"
-                            className="border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red bg-white"
-                          />
-                          <input
-                            required
-                            type="text"
-                            value={stateName}
-                            onChange={(e) => setStateName(e.target.value)}
-                            placeholder="State *"
-                            className="border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red bg-white"
-                          />
-                          <input
-                            required
-                            maxLength={6}
-                            type="text"
-                            value={pincode}
-                            onChange={(e) => setPincode(e.target.value.replace(/\D/g, ""))}
-                            placeholder="Pincode *"
-                            className="border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red bg-white"
-                          />
+                          <input required type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="City *" className="border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red bg-white" />
+                          <input required type="text" value={stateName} onChange={(e) => setStateName(e.target.value)} placeholder="State *" className="border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red bg-white" />
+                          <input required maxLength={6} type="text" value={pincode} onChange={(e) => setPincode(e.target.value.replace(/\D/g, ""))} placeholder="Pincode *" className="border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red bg-white" />
                         </div>
                       </div>
                     )}
-
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="w-full btn-primary py-3 font-semibold text-sm disabled:opacity-50"
-                    >
+                    <button type="submit" disabled={submitting} className="w-full btn-primary py-3 font-semibold text-sm disabled:opacity-50">
                       {submitting ? "Submitting..." : "Submit Inquiry →"}
                     </button>
                   </form>
                 )}
               </div>
             ) : (
-              /* ── REGULAR PRODUCT: Add to Cart / Buy Now ── */
+              /* ── REGULAR PRODUCT ── */
               <>
                 <div className="flex items-center gap-4">
                   <span className="text-sm font-medium">Quantity:</span>
                   <div className="flex items-center border border-gray-200">
-                    <button
-                      onClick={() => setQty((q) => Math.max(1, q - 1))}
-                      className="w-10 h-10 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                    >
-                      −
-                    </button>
+                    <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="w-10 h-10 flex items-center justify-center hover:bg-gray-50">−</button>
                     <span className="w-12 text-center text-sm font-medium">{qty}</span>
-                    <button
-                      onClick={() => setQty((q) => q + 1)}
-                      className="w-10 h-10 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                    >
-                      +
-                    </button>
+                    <button onClick={() => setQty((q) => q + 1)} className="w-10 h-10 flex items-center justify-center hover:bg-gray-50">+</button>
                   </div>
                 </div>
-
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${product.inStock ? "bg-green-500" : "bg-red-500"}`} />
                   <span className={`text-sm font-medium ${product.inStock ? "text-green-600" : "text-red-600"}`}>
                     {product.inStock ? "In Stock — Ready to Ship" : "Out of Stock"}
                   </span>
                 </div>
-
                 <div className="flex gap-3 flex-col sm:flex-row">
-                  <button
-                    onClick={handleAddToCart}
-                    disabled={!product.inStock}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 font-semibold text-sm border-2 transition-all ${
-                      product.inStock
-                        ? "border-brand-black text-brand-black hover:bg-brand-black hover:text-white"
-                        : "border-gray-200 text-gray-300 cursor-not-allowed"
-                    }`}
-                  >
-                    <ShoppingCart size={16} />
-                    Add to Cart
+                  <button onClick={handleAddToCart} disabled={!product.inStock} className={`flex-1 flex items-center justify-center gap-2 py-3 font-semibold text-sm border-2 transition-all ${product.inStock ? "border-brand-black text-brand-black hover:bg-brand-black hover:text-white" : "border-gray-200 text-gray-300 cursor-not-allowed"}`}>
+                    <ShoppingCart size={16} /> Add to Cart
                   </button>
-                  <button
-                    onClick={handleBuyNow}
-                    disabled={!product.inStock}
-                    className={`flex-1 py-3 font-semibold text-sm transition-all ${
-                      product.inStock ? "btn-primary" : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    }`}
-                  >
+                  <button onClick={handleBuyNow} disabled={!product.inStock} className={`flex-1 py-3 font-semibold text-sm transition-all ${product.inStock ? "btn-primary" : "bg-gray-200 text-gray-400 cursor-not-allowed"}`}>
                     Buy Now
                   </button>
                 </div>
