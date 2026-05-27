@@ -5,6 +5,8 @@ import { CartProvider } from "@/context/CartContext";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Toaster } from "react-hot-toast";
+import { useEffect } from "react";
+import UnregisterSW from "@/components/UnregisterSW"
 
 export const metadata: Metadata = {
   title: "Trikriti Studio — Where Ideas Get Printed",
@@ -30,6 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
+        <UnregisterSW />
         <AuthProvider>
           <CartProvider>
             <Toaster
