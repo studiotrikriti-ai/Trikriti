@@ -213,10 +213,7 @@ export default function HeroSlider() {
       <div className="hidden lg:grid grid-cols-12 bg-neutral-50 text-neutral-900 min-h-[720px]">
         {/* LEFT — content */}
         <div className="col-span-6 xl:col-span-5 relative flex flex-col justify-between px-10 lg:px-14 py-16 z-10">
-          <div className="flex items-center gap-3 mb-8">
-            <span className="text-brand-red font-serif text-2xl tracking-tight font-bold">Trikriti</span>
-            <span className="text-neutral-900 font-serif text-2xl tracking-tight">Studio</span>
-          </div>
+          
 
           <div key={slide.id} className="py-10 animate-[fadeUp_700ms_ease-out]">
             <div className="inline-flex items-center gap-2 mb-6 px-3 py-1 rounded-full border border-neutral-200 bg-white/60 backdrop-blur text-[11px] uppercase tracking-[0.2em] text-neutral-700">
